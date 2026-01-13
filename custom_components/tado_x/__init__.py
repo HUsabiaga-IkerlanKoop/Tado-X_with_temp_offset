@@ -4,10 +4,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import TadoXApi, TadoXApiError, TadoXAuthError
@@ -25,6 +28,30 @@ from .const import (
 from .coordinator import TadoXDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+                    cv.positive_int, vol.Range(min=30, max=3600)
+                ),
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the Tado X component from YAML."""
+    hass.data.setdefault(DOMAIN, {})
+    
+    # Store YAML config for later use
+    if DOMAIN in config:
+        hass.data[DOMAIN]["yaml_config"] = config[DOMAIN]
+    
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -67,8 +94,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Authentication failed: %s", err)
         raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
 
-    # Get scan interval from config data, fallback to default
-    scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    # Get scan interval - YAML config overrides stored value
+    yaml_config = hass.data[DOMAIN].get("yaml_config", {})
+    scan_interval = yaml_config.get(
+        CONF_SCAN_INTERVAL,
+        entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    )
+    _LOGGER.info("Using scan interval: %s seconds", scan_interval)
 
     # Create coordinator
     coordinator = TadoXDataUpdateCoordinator(
