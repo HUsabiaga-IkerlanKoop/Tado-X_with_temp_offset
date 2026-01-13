@@ -16,6 +16,13 @@
           "home_id": "Home"
         }
       },
+      "configure": {
+        "title": "Configure Polling Rate",
+        "description": "Set the polling rate for updates from the Tado API. Lower values mean more frequent updates but more API requests. Default is {default_interval} seconds (14.3 minutes).",
+        "data": {
+          "scan_interval": "Polling Rate (seconds)"
+        }
+      },
       "reauth_confirm": {
         "title": "Re-authenticate Tado X",
         "description": "Your Tado X authentication has expired. Click Submit to re-authenticate."

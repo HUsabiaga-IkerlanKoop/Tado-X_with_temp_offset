@@ -39,6 +39,7 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
         self._verification_uri: str | None = None
         self._poll_task: asyncio.Task | None = None
         self._homes: list[dict[str, Any]] = []
+        self._selected_home: dict[str, Any] | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -95,9 +96,9 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
                         # Get homes
                         self._homes = await self._api.get_homes()
                         if len(self._homes) == 1:
-                            # Only one home, use it directly
-                            home = self._homes[0]
-                            return self._create_entry(home)
+                            # Only one home, go to configure step
+                            self._selected_home = self._homes[0]
+                            return await self.async_step_configure()
                         elif len(self._homes) > 1:
                             # Multiple homes, let user choose
                             return await self.async_step_select_home()
@@ -128,7 +129,8 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
             home_id = user_input[CONF_HOME_ID]
             for home in self._homes:
                 if home["id"] == home_id:
-                    return self._create_entry(home)
+                    self._selected_home = home
+                    return await self.async_step_configure()
 
         home_options = {home["id"]: home["name"] for home in self._homes}
 
@@ -141,7 +143,30 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    def _create_entry(self, home: dict[str, Any]) -> ConfigFlowResult:
+    async def async_step_configure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle configuration of polling rate."""
+        if user_input is not None:
+            scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            return self._create_entry(self._selected_home, scan_interval)
+
+        return self.async_show_form(
+            step_id="configure",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_SCAN_INTERVAL,
+                        default=DEFAULT_SCAN_INTERVAL,
+                    ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+                }
+            ),
+            description_placeholders={
+                "default_interval": str(DEFAULT_SCAN_INTERVAL),
+            },
+        )
+
+    def _create_entry(self, home: dict[str, Any], scan_interval: int = DEFAULT_SCAN_INTERVAL) -> ConfigFlowResult:
         """Create the config entry."""
         if not self._api:
             return self.async_abort(reason="unknown")
@@ -160,7 +185,7 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_ACCESS_TOKEN: self._api.access_token,
                 CONF_REFRESH_TOKEN: self._api.refresh_token,
                 CONF_TOKEN_EXPIRY: self._api.token_expiry.isoformat() if self._api.token_expiry else None,
-                CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
+                CONF_SCAN_INTERVAL: scan_interval,
             },
         )
 
