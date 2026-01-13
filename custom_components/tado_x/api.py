@@ -78,33 +78,29 @@ class TadoXApi:
         _LOGGER.warning("Starting device authorization flow")
         timeout = aiohttp.ClientTimeout(total=30, connect=10, sock_read=20)
 
-        # Create SSL context that's more permissive for debugging
-        ssl_context = ssl.create_default_context()
-
-        # Create a dedicated session for auth to ensure timeout is respected
-        connector = aiohttp.TCPConnector(force_close=True, ssl=ssl_context)
-        async with aiohttp.ClientSession(
-            timeout=timeout,
-            connector=connector,
-        ) as auth_session:
-            try:
-                _LOGGER.warning("Sending request to %s", TADO_AUTH_URL)
-                async with auth_session.post(
-                    TADO_AUTH_URL,
-                    data={
-                        "client_id": TADO_CLIENT_ID,
-                        "scope": "offline_access",
-                    },
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
-                ) as response:
-                    _LOGGER.warning("Device auth response status: %s", response.status)
-                    if response.status != 200:
-                        text = await response.text()
-                        _LOGGER.error("Failed to start device auth: %s - %s", response.status, text)
-                        raise TadoXAuthError(f"Failed to start device auth: {response.status}")
-                    result = await response.json()
-                    _LOGGER.warning("Device auth successful, got user_code: %s", result.get("user_code"))
-                    return result
+        # Use existing session but enforce timeout
+        try:
+            _LOGGER.warning("Sending request to %s", TADO_AUTH_URL)
+            async with self._session.post(
+                TADO_AUTH_URL,
+                data={
+                    "client_id": TADO_CLIENT_ID,
+                    "scope": "offline_access",
+                },
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Connection": "close",
+                },
+                timeout=timeout,
+            ) as response:
+                _LOGGER.warning("Device auth response status: %s", response.status)
+                if response.status != 200:
+                    text = await response.text()
+                    _LOGGER.error("Failed to start device auth: %s - %s", response.status, text)
+                    raise TadoXAuthError(f"Failed to start device auth: {response.status}")
+                result = await response.json()
+                _LOGGER.warning("Device auth successful, got user_code: %s", result.get("user_code"))
+                return result
             except asyncio.TimeoutError as err:
                 _LOGGER.error("Timeout during device auth request (30s)")
                 raise TadoXAuthError("Timeout during device auth request") from err
