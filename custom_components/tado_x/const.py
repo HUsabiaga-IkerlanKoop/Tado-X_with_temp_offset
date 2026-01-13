@@ -49,5 +49,10 @@ BATTERY_STATE_LOW: Final = "LOW"
 CONNECTION_STATE_CONNECTED: Final = "CONNECTED"
 CONNECTION_STATE_DISCONNECTED: Final = "DISCONNECTED"
 
+# Temperature offset limits
+MIN_OFFSET: Final = -9.9
+MAX_OFFSET: Final = 9.9
+OFFSET_STEP: Final = 0.1
+
 # Platforms
-PLATFORMS: Final = ["climate", "sensor", "binary_sensor"]
+PLATFORMS: Final = ["climate", "sensor", "binary_sensor", "number"]

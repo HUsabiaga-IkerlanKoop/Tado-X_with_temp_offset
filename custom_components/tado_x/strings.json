@@ -76,6 +76,11 @@
       "battery_low": {
         "name": "Battery Low"
       }
+    },
+    "number": {
+      "temperature_offset": {
+        "name": "Temperature Offset"
+      }
     }
   }
 }

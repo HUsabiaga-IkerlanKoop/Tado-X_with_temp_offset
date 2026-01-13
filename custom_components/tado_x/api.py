@@ -383,3 +383,14 @@ class TadoXApi:
                 "DELETE",
                 f"{TADO_HOPS_API_URL}/homes/{self._home_id}/rooms/{room_id}/openWindow",
             )
+
+    async def set_device_temperature_offset(self, device_serial: str, offset: float) -> None:
+        """Set the temperature offset for a device (VA04 or SU04 only)."""
+        if not self._home_id:
+            raise TadoXApiError("Home ID not set")
+
+        await self._request(
+            "PATCH",
+            f"{TADO_HOPS_API_URL}/homes/{self._home_id}/roomsAndDevices/devices/{device_serial}",
+            json={"temperatureOffset": offset},
+        )
