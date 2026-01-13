@@ -16,7 +16,9 @@ from .const import (
     CONF_HOME_ID,
     CONF_HOME_NAME,
     CONF_REFRESH_TOKEN,
+    CONF_SCAN_INTERVAL,
     CONF_TOKEN_EXPIRY,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     PLATFORMS,
 )
@@ -65,12 +67,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Authentication failed: %s", err)
         raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
 
+    # Get scan interval from config data, fallback to default
+    scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+
     # Create coordinator
     coordinator = TadoXDataUpdateCoordinator(
         hass=hass,
         api=api,
         home_id=home_id,
         home_name=home_name,
+        scan_interval=scan_interval,
     )
 
     # Fetch initial data

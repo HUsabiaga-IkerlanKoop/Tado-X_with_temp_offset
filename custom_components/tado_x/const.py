@@ -18,9 +18,10 @@ CONF_HOME_NAME: Final = "home_name"
 CONF_ACCESS_TOKEN: Final = "access_token"
 CONF_REFRESH_TOKEN: Final = "refresh_token"
 CONF_TOKEN_EXPIRY: Final = "token_expiry"
+CONF_SCAN_INTERVAL: Final = "scan_interval"
 
 # Update intervals
-DEFAULT_SCAN_INTERVAL: Final = 30  # seconds
+DEFAULT_SCAN_INTERVAL: Final = 860  # seconds (14.3 minutes)
 
 # Device types
 DEVICE_TYPE_VALVE: Final = "VA04"  # Tado X Radiator Valve

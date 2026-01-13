@@ -74,13 +74,14 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
         api: TadoXApi,
         home_id: int,
         home_name: str,
+        scan_interval: int = DEFAULT_SCAN_INTERVAL,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(seconds=scan_interval),
         )
         self.api = api
         self.home_id = home_id

@@ -17,7 +17,9 @@ from .const import (
     CONF_HOME_ID,
     CONF_HOME_NAME,
     CONF_REFRESH_TOKEN,
+    CONF_SCAN_INTERVAL,
     CONF_TOKEN_EXPIRY,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 
@@ -158,6 +160,7 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_ACCESS_TOKEN: self._api.access_token,
                 CONF_REFRESH_TOKEN: self._api.refresh_token,
                 CONF_TOKEN_EXPIRY: self._api.token_expiry.isoformat() if self._api.token_expiry else None,
+                CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
             },
         )
 
