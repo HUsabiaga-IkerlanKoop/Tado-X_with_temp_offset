@@ -96,6 +96,9 @@ async def async_setup_entry(
 
     entities: list[SensorEntity] = []
 
+    # Home-level geofencing presence (HOME/AWAY/UNKNOWN)
+    entities.append(TadoXHomePresenceSensor(coordinator))
+
     # Add room sensors
     for room_id in coordinator.data.rooms:
         for description in ROOM_SENSORS:
@@ -158,6 +161,41 @@ class TadoXRoomSensor(CoordinatorEntity[TadoXDataUpdateCoordinator], SensorEntit
         if not room:
             return None
         return self.entity_description.value_fn(room)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()
+
+
+class TadoXHomePresenceSensor(CoordinatorEntity[TadoXDataUpdateCoordinator], SensorEntity):
+    """Geofencing presence for the home."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Geofencing presence"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["HOME", "AWAY", "UNKNOWN"]
+
+    def __init__(self, coordinator: TadoXDataUpdateCoordinator) -> None:
+        """Initialize the sensor entity."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.home_id}_geofencing_presence"
+
+    @property
+    def native_value(self) -> Any:
+        """Return the current home presence state."""
+        presence = self.coordinator.data.presence
+        return presence if presence else "UNKNOWN"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for the home."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, str(self.coordinator.home_id))},
+            name=self.coordinator.home_name,
+            manufacturer="Tado",
+            model="Tado X Home",
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:

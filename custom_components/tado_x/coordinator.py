@@ -60,6 +60,7 @@ class TadoXData:
 
     home_id: int
     home_name: str
+    presence: str | None = None
     rooms: dict[int, TadoXRoom] = field(default_factory=dict)
     devices: dict[str, TadoXDevice] = field(default_factory=dict)
     other_devices: list[TadoXDevice] = field(default_factory=list)
@@ -94,11 +95,15 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
         self.min_temp = min_temp
         self.max_temp = max_temp
 
-    async def async_geofencing_check(self):
-        """Check geofencing status and set home/away mode as in tado_aa."""
+    async def async_geofencing_check(self, home_state: dict[str, Any] | None = None) -> str | None:
+        """Check geofencing status and set home/away mode as in tado_aa.
+
+        Returns the detected home presence (e.g., HOME/AWAY) when available.
+        """
         try:
-            # Get home presence state
-            home_state = await self.api.get_home_state()
+            # Get home presence state (re-use provided state to avoid extra call)
+            if home_state is None:
+                home_state = await self.api.get_home_state()
             presence = home_state.get("presence")
 
             # Get mobile devices
@@ -119,15 +124,21 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
                 # No devices at home, but home is in HOME mode: set AWAY
                 await self.api.set_presence("AWAY")
                 _LOGGER.info("Geofencing: No devices at home, switching to AWAY mode.")
+            return presence
         except Exception as e:
             _LOGGER.error(f"Geofencing check failed: {e}")
+            return home_state.get("presence") if home_state else None
 
     async def _async_update_data(self) -> TadoXData:
         """Fetch data from Tado X API."""
         try:
+            # Always fetch home state to expose geofencing presence
+            home_state = await self.api.get_home_state()
+            presence = home_state.get("presence")
+
             # Run geofencing check if enabled
             if self.geofencing_enabled:
-                await self.async_geofencing_check()
+                await self.async_geofencing_check(home_state)
             # Get rooms with current state
             rooms_data = await self.api.get_rooms()
 
@@ -138,6 +149,7 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
             data = TadoXData(
                 home_id=self.home_id,
                 home_name=self.home_name,
+                presence=presence,
             )
 
             # Process rooms and devices
