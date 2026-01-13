@@ -66,33 +66,6 @@ class TadoXData:
 
 
 class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
-        async def async_geofencing_check(self):
-            """Check geofencing status and set home/away mode as in tado_aa."""
-            try:
-                # Get home presence state
-                home_state = await self.api._request("GET", f"https://my.tado.com/api/v2/homes/{self.home_id}/state")
-                presence = home_state.get("presence")
-
-                # Get mobile devices
-                mobile_devices = await self.api._request("GET", f"https://my.tado.com/api/v2/homes/{self.home_id}/mobileDevices")
-                devices_home = []
-                for device in mobile_devices:
-                    geo_enabled = device.get("settings", {}).get("geoTrackingEnabled", False)
-                    location = device.get("location")
-                    if geo_enabled and location and location.get("atHome"):
-                        devices_home.append(device.get("name"))
-
-                # Geofencing logic (copy from tado_aa)
-                if len(devices_home) > 0 and presence == "AWAY":
-                    # Devices are home, but home is in AWAY mode: set HOME
-                    await self.api._request("PUT", f"https://my.tado.com/api/v2/homes/{self.home_id}/presence", json_data={"presence": "HOME"})
-                    _LOGGER.info("Geofencing: Devices at home, switching to HOME mode.")
-                elif len(devices_home) == 0 and presence == "HOME":
-                    # No devices at home, but home is in HOME mode: set AWAY
-                    await self.api._request("PUT", f"https://my.tado.com/api/v2/homes/{self.home_id}/presence", json_data={"presence": "AWAY"})
-                    _LOGGER.info("Geofencing: No devices at home, switching to AWAY mode.")
-            except Exception as e:
-                _LOGGER.error(f"Geofencing check failed: {e}")
     """Class to manage fetching Tado X data."""
 
     def __init__(
@@ -102,6 +75,9 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
         home_id: int,
         home_name: str,
         scan_interval: int = DEFAULT_SCAN_INTERVAL,
+        geofencing_enabled: bool = False,
+        min_temp: float | None = None,
+        max_temp: float | None = None,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -114,10 +90,44 @@ class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
         self.home_id = home_id
         self.home_name = home_name
         self.api.home_id = home_id
+        self.geofencing_enabled = geofencing_enabled
+        self.min_temp = min_temp
+        self.max_temp = max_temp
+
+    async def async_geofencing_check(self):
+        """Check geofencing status and set home/away mode as in tado_aa."""
+        try:
+            # Get home presence state
+            home_state = await self.api.get_home_state()
+            presence = home_state.get("presence")
+
+            # Get mobile devices
+            mobile_devices = await self.api.get_mobile_devices()
+            devices_home = []
+            for device in mobile_devices:
+                geo_enabled = device.get("settings", {}).get("geoTrackingEnabled", False)
+                location = device.get("location")
+                if geo_enabled and location and location.get("atHome"):
+                    devices_home.append(device.get("name"))
+
+            # Geofencing logic (copy from tado_aa)
+            if len(devices_home) > 0 and presence == "AWAY":
+                # Devices are home, but home is in AWAY mode: set HOME
+                await self.api.set_presence("HOME")
+                _LOGGER.info("Geofencing: Devices at home, switching to HOME mode.")
+            elif len(devices_home) == 0 and presence == "HOME":
+                # No devices at home, but home is in HOME mode: set AWAY
+                await self.api.set_presence("AWAY")
+                _LOGGER.info("Geofencing: No devices at home, switching to AWAY mode.")
+        except Exception as e:
+            _LOGGER.error(f"Geofencing check failed: {e}")
 
     async def _async_update_data(self) -> TadoXData:
         """Fetch data from Tado X API."""
         try:
+            # Run geofencing check if enabled
+            if self.geofencing_enabled:
+                await self.async_geofencing_check()
             # Get rooms with current state
             rooms_data = await self.api.get_rooms()
 

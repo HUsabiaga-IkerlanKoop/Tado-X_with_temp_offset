@@ -258,6 +258,26 @@ class TadoXApi:
         me = await self.get_me()
         return me.get("homes", [])
 
+    async def get_home_state(self) -> dict[str, Any]:
+        """Get the presence state of the home."""
+        if not self._home_id:
+            raise TadoXApiError("Home ID not set")
+        result = await self._request("GET", f"{TADO_MY_API_URL}/homes/{self._home_id}/state")
+        return result if isinstance(result, dict) else {}
+
+    async def get_mobile_devices(self) -> list[dict[str, Any]]:
+        """Get all mobile devices for the home."""
+        if not self._home_id:
+            raise TadoXApiError("Home ID not set")
+        result = await self._request("GET", f"{TADO_MY_API_URL}/homes/{self._home_id}/mobileDevices")
+        return result if isinstance(result, list) else []
+
+    async def set_presence(self, presence: str) -> None:
+        """Set the home presence (HOME or AWAY)."""
+        if not self._home_id:
+            raise TadoXApiError("Home ID not set")
+        await self._request("PUT", f"{TADO_MY_API_URL}/homes/{self._home_id}/presence", json_data={"presence": presence})
+
     # Hops Tado API endpoints (Tado X specific)
     async def get_rooms(self) -> list[dict[str, Any]]:
         """Get all rooms with current state."""

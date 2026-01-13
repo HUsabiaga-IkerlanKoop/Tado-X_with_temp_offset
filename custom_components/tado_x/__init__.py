@@ -21,6 +21,9 @@ from .const import (
     CONF_REFRESH_TOKEN,
     CONF_SCAN_INTERVAL,
     CONF_TOKEN_EXPIRY,
+    CONF_GEOFENCING_ENABLED,
+    CONF_MIN_TEMP,
+    CONF_MAX_TEMP,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     PLATFORMS,
@@ -109,6 +112,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         home_id=home_id,
         home_name=home_name,
         scan_interval=scan_interval,
+        geofencing_enabled=entry.data.get(CONF_GEOFENCING_ENABLED, False),
+        min_temp=entry.data.get(CONF_MIN_TEMP),
+        max_temp=entry.data.get(CONF_MAX_TEMP),
     )
 
     # Fetch initial data

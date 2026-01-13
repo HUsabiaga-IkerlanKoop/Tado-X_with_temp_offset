@@ -225,9 +225,10 @@ class TadoXClimate(CoordinatorEntity[TadoXDataUpdateCoordinator], ClimateEntity)
         elif hvac_mode == HVACMode.HEAT:
             # Set to current target or default 21
             temp = room.target_temperature or 21.0
+            clamped_temp = await self._clamp_temperature(temp)
             await self.coordinator.api.set_room_temperature(
                 self._room_id,
-                temperature=temp,
+                temperature=clamped_temp,
                 termination_type=TERMINATION_MANUAL,
             )
         elif hvac_mode == HVACMode.AUTO:
@@ -236,29 +237,23 @@ class TadoXClimate(CoordinatorEntity[TadoXDataUpdateCoordinator], ClimateEntity)
 
         await self.coordinator.async_request_refresh()
 
+    async def _clamp_temperature(self, temperature: float) -> float:
+        """Clamp the temperature to the configured min/max values."""
+        min_temp = self.coordinator.min_temp if self.coordinator.min_temp is not None else self._attr_min_temp
+        max_temp = self.coordinator.max_temp if self.coordinator.max_temp is not None else self._attr_max_temp
+        return max(min_temp, min(temperature, max_temp))
+
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set the target temperature, enforcing min/max limits from config."""
+        """Set the target temperature."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
 
-        # Get min/max temp from config entry
-        entry = self.coordinator.hass.config_entries.async_get_entry(self.coordinator.home_id)
-        min_temp = MIN_TEMP
-        max_temp = MAX_TEMP
-        if entry:
-            min_temp = entry.data.get("min_temp", MIN_TEMP)
-            max_temp = entry.data.get("max_temp", MAX_TEMP)
-
-        # Enforce limits
-        if temperature < min_temp:
-            temperature = min_temp
-        elif temperature > max_temp:
-            temperature = max_temp
+        clamped_temp = await self._clamp_temperature(temperature)
 
         await self.coordinator.api.set_room_temperature(
             self._room_id,
-            temperature=temperature,
+            temperature=clamped_temp,
             termination_type=TERMINATION_TIMER,
             duration_seconds=DEFAULT_TIMER_DURATION,
         )
@@ -280,9 +275,11 @@ class TadoXClimate(CoordinatorEntity[TadoXDataUpdateCoordinator], ClimateEntity)
         if temp is None:
             temp = 21.0
 
+        clamped_temp = await self._clamp_temperature(temp)
+
         await self.coordinator.api.set_room_temperature(
             self._room_id,
-            temperature=temp,
+            temperature=clamped_temp,
             termination_type=TERMINATION_MANUAL,
         )
         await self.coordinator.async_request_refresh()
