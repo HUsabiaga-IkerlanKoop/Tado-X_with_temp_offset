@@ -66,6 +66,33 @@ class TadoXData:
 
 
 class TadoXDataUpdateCoordinator(DataUpdateCoordinator[TadoXData]):
+        async def async_geofencing_check(self):
+            """Check geofencing status and set home/away mode as in tado_aa."""
+            try:
+                # Get home presence state
+                home_state = await self.api._request("GET", f"https://my.tado.com/api/v2/homes/{self.home_id}/state")
+                presence = home_state.get("presence")
+
+                # Get mobile devices
+                mobile_devices = await self.api._request("GET", f"https://my.tado.com/api/v2/homes/{self.home_id}/mobileDevices")
+                devices_home = []
+                for device in mobile_devices:
+                    geo_enabled = device.get("settings", {}).get("geoTrackingEnabled", False)
+                    location = device.get("location")
+                    if geo_enabled and location and location.get("atHome"):
+                        devices_home.append(device.get("name"))
+
+                # Geofencing logic (copy from tado_aa)
+                if len(devices_home) > 0 and presence == "AWAY":
+                    # Devices are home, but home is in AWAY mode: set HOME
+                    await self.api._request("PUT", f"https://my.tado.com/api/v2/homes/{self.home_id}/presence", json_data={"presence": "HOME"})
+                    _LOGGER.info("Geofencing: Devices at home, switching to HOME mode.")
+                elif len(devices_home) == 0 and presence == "HOME":
+                    # No devices at home, but home is in HOME mode: set AWAY
+                    await self.api._request("PUT", f"https://my.tado.com/api/v2/homes/{self.home_id}/presence", json_data={"presence": "AWAY"})
+                    _LOGGER.info("Geofencing: No devices at home, switching to AWAY mode.")
+            except Exception as e:
+                _LOGGER.error(f"Geofencing check failed: {e}")
     """Class to manage fetching Tado X data."""
 
     def __init__(

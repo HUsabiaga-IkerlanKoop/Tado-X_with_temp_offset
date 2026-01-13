@@ -12,6 +12,7 @@ TADO_MY_API_URL: Final = "https://my.tado.com/api/v2"
 # OAuth2 Client ID (public client for device linking)
 TADO_CLIENT_ID: Final = "1bb50063-6b0c-4d11-bd99-387f4a91cc46"
 
+
 # Config keys
 CONF_HOME_ID: Final = "home_id"
 CONF_HOME_NAME: Final = "home_name"
@@ -19,6 +20,10 @@ CONF_ACCESS_TOKEN: Final = "access_token"
 CONF_REFRESH_TOKEN: Final = "refresh_token"
 CONF_TOKEN_EXPIRY: Final = "token_expiry"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
+# New config keys for advanced features
+CONF_GEOFENCING_ENABLED: Final = "geofencing_enabled"
+CONF_MIN_TEMP: Final = "min_temp"
+CONF_MAX_TEMP: Final = "max_temp"
 
 # Update intervals
 DEFAULT_SCAN_INTERVAL: Final = 860  # seconds (14.3 minutes)

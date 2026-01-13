@@ -149,7 +149,16 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle configuration of polling rate."""
         if user_input is not None:
             scan_interval = user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-            return self._create_entry(self._selected_home, scan_interval)
+            geofencing_enabled = user_input.get(CONF_GEOFENCING_ENABLED, False)
+            min_temp = user_input.get(CONF_MIN_TEMP, MIN_TEMP)
+            max_temp = user_input.get(CONF_MAX_TEMP, MAX_TEMP)
+            return self._create_entry(
+                self._selected_home,
+                scan_interval,
+                geofencing_enabled,
+                min_temp,
+                max_temp,
+            )
 
         return self.async_show_form(
             step_id="configure",
@@ -159,6 +168,18 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_SCAN_INTERVAL,
                         default=DEFAULT_SCAN_INTERVAL,
                     ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+                    vol.Optional(
+                        CONF_GEOFENCING_ENABLED,
+                        default=False,
+                    ): bool,
+                    vol.Optional(
+                        CONF_MIN_TEMP,
+                        default=MIN_TEMP,
+                    ): vol.All(vol.Coerce(float), vol.Range(min=MIN_TEMP, max=MAX_TEMP)),
+                    vol.Optional(
+                        CONF_MAX_TEMP,
+                        default=MAX_TEMP,
+                    ): vol.All(vol.Coerce(float), vol.Range(min=MIN_TEMP, max=MAX_TEMP)),
                 }
             ),
             description_placeholders={
@@ -166,7 +187,14 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
-    def _create_entry(self, home: dict[str, Any], scan_interval: int = DEFAULT_SCAN_INTERVAL) -> ConfigFlowResult:
+    def _create_entry(
+        self,
+        home: dict[str, Any],
+        scan_interval: int = DEFAULT_SCAN_INTERVAL,
+        geofencing_enabled: bool = False,
+        min_temp: float = MIN_TEMP,
+        max_temp: float = MAX_TEMP,
+    ) -> ConfigFlowResult:
         """Create the config entry."""
         if not self._api:
             return self.async_abort(reason="unknown")
@@ -186,6 +214,9 @@ class TadoXConfigFlow(ConfigFlow, domain=DOMAIN):
                 CONF_REFRESH_TOKEN: self._api.refresh_token,
                 CONF_TOKEN_EXPIRY: self._api.token_expiry.isoformat() if self._api.token_expiry else None,
                 CONF_SCAN_INTERVAL: scan_interval,
+                CONF_GEOFENCING_ENABLED: geofencing_enabled,
+                CONF_MIN_TEMP: min_temp,
+                CONF_MAX_TEMP: max_temp,
             },
         )
 

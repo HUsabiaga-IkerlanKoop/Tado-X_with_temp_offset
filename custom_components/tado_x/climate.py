@@ -237,10 +237,24 @@ class TadoXClimate(CoordinatorEntity[TadoXDataUpdateCoordinator], ClimateEntity)
         await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set the target temperature."""
+        """Set the target temperature, enforcing min/max limits from config."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
+
+        # Get min/max temp from config entry
+        entry = self.coordinator.hass.config_entries.async_get_entry(self.coordinator.home_id)
+        min_temp = MIN_TEMP
+        max_temp = MAX_TEMP
+        if entry:
+            min_temp = entry.data.get("min_temp", MIN_TEMP)
+            max_temp = entry.data.get("max_temp", MAX_TEMP)
+
+        # Enforce limits
+        if temperature < min_temp:
+            temperature = min_temp
+        elif temperature > max_temp:
+            temperature = max_temp
 
         await self.coordinator.api.set_room_temperature(
             self._room_id,
